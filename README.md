@@ -1,7 +1,7 @@
 # Windows Relative Shortcut Creator
 A small AHK script that lets you create a windows shortcut to the working directory that uses a relative path. 
 
-Recomended to be used as a context menu item so as to be easily used in any working dir. (3rd party programs or registry editing)
+Recomended to be used as a context menu item so as to be easily used in any working dir. ([3rd party program](https://www.sordum.org/7615/easy-context-menu-v1-6/)s or registry editing)
 
 Opens a file selector that lets you choose the target file. 
 The Relative Shortcut is then created in the working directory with the name "%target filename% - Relative Shortcut"
