@@ -1,84 +1,94 @@
 ;get target
 try {
-	FileSelectFile, TestFile, 3,,Select shortcut target
+	FileSelectFile, files, M3,,Select shortcut target
 } catch e {
 	MsgBox Something went wrong: %e%
 }
-
-;make some variables from target and working dir
-WorkingDirSplit := []
-TargetDirSplit := []
-WorkingDirSplit := StrSplit(A_WorkingDir, "\")
-TargetDirSplit := StrSplit(TestFile, "\")
-WorkingDirSplitLength := WorkingDirSplit.MaxIndex()
-TargetDirSplitLength := TargetDirSplit.MaxIndex()
-
-;initialization
-NumOfSameparts := 0
-ArrayCount := 1
-
-;calculate the number of same parts in paths 
-;example: "C:\test\test2\test3\" AND "C:\test\test2\something.exe" would have 3 same parts: "C:", "test" and "test2"
-Loop
+if (files = "")
 {
-	if(ArrayCount = (WorkingDirSplitLength) or ArrayCount = (WorkingDirSplitLength)) 
-	{
-		NumOfSameparts := ArrayCount
-		break
+    Exit
+}
+
+TargetPath := ""
+Loop, parse, files, `n
+{
+    if (A_Index = 1)
+    {
+		TargetPath := GetRelativePath(A_LoopField)
 	}
-
-	if(WorkingDirSplit[ArrayCount] = TargetDirSplit[ArrayCount])
-		NumOfSameparts += 1
-	else
-		break
+    else
+    {
+		;Create target from path + current iteration file
+		Target := TargetPath . A_LoopField
+		;trim trailing \ and add quotes
+		Target := RTrim(Target, "\")
+		Target :=  """" . Target . """"
 		
-	ArrayCount += 1
+		ShortcutName := A_LoopField . " - Relative Shortcut.lnk"
+		HoverMsg := RTrim(ShortcutName, ".lnk")
+
+		;create shortcut
+		Explorer := "%windir%\explorer.exe"
+		FileCreateShortcut,%Explorer%, %ShortcutName%,,%Target%,%HoverMsg%,%windir%\explorer.exe,,,1
+    }
 }
 
-if(NumOfSameparts = 0) 
+
+GetRelativePath(path)
 {
-	MsgBox, Error: Cannot create a relative path shortcut to another drive
-	Exit
-}
-
-;How far is the last same part from working dir
-HowFarFromWorkDir := WorkingDirSplitLength - NumOfSameparts
-
-;set the number of steps back (..\) to get to the last same part
-Target := ""
-Loop, %HowFarFromWorkDir%
-{
-	Target := Target . "..\"
-}
-
-;or if none are needed set it to "current folder" (.\)
-if(HowFarFromWorkDir = 0) 
-{
-	Target := ".\"
-}
-
-;How far is the last same part from target dir (-1 because the last part is the filename)
-HowFarFromTargetDir := TargetDirSplitLength - NumOfSameparts - 1
-
-;add in the rest of the path after last same part
-ArrayCount := TargetDirSplitLength - HowFarFromTargetDir
-Loop
-{
-	if(ArrayCount = TargetDirSplitLength+1)
-		break
-	else
-		Target := Target . TargetDirSplit[ArrayCount] . "\"
+	;init
+	RelPath := ""
+	WorkingDirSplit := []
+	TargetDirSplit := []
+	WorkingDirSplit := StrSplit(A_WorkingDir, "\")
+	TargetDirSplit := StrSplit(path, "\")
 	
-	ArrayCount += 1
+	;Get number of same parts in working dir and target file dir
+	NumOfSameParts := 0
+	AfterSameParts := ""
+	Loop
+	{
+		if(A_Index > WorkingDirSplit.Count() or A_Index > TargetDirSplit.Count())
+			break
+	
+		if(WorkingDirSplit[A_Index] = TargetDirSplit[A_Index])
+		{
+			NumOfSameParts += 1
+			AfterSameParts := 
+		}
+		else
+			break
+	}
+	if(NumOfSameParts = 0) 
+	{
+		MsgBox, Error: Cannot create a relative path shortcut to another drive
+		Exit
+	}
+	
+	;How far is the last same part from working dir
+	HowFarFromWorkDir := WorkingDirSplit.Count() - NumOfSameParts
+	
+	;set the number of steps back (..\) to get to the last same part
+	Loop, %HowFarFromWorkDir%
+	{
+		RelPath := RelPath . "..\"
+	}
+	;if taget file is in working dir
+	if(HowFarFromWorkDir = 0) 
+	{
+		RelPath := ".\"
+	}
+	
+	;Add the rest of the path
+	Loop
+	{
+		if(NumOfSameParts + A_Index > TargetDirSplit.Count())
+			break
+		else if(StrLen(TargetDirSplit[NumOfSameParts + A_Index]) > 0)
+		{
+			RelPath := RelPath . TargetDirSplit[NumOfSameParts + A_Index] . "\"
+		}
+	}
+		
+	return RelPath
 }
-
-;trim trailing \ and add quotes
-Target := RTrim(Target, "\")
-Target :=  """" . Target . """"
-
-ShortcutName := TargetDirSplit[TargetDirSplit.MaxIndex()] . " - Relative Shortcut.lnk"
-HoverMsg := RTrim(ShortcutName, ".lnk")
-
-;create shortcut
-Explorer := "%windir%\explorer.exe"
-FileCreateShortcut,%Explorer%, %ShortcutName%,,%Target%,%HoverMsg%,%windir%\explorer.exe,,,1
